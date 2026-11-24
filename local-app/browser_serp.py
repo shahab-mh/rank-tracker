@@ -86,15 +86,32 @@ EXTRACT_JS = r"""
     const t = (h.textContent || '').trim();
     for (const [type, re] of Object.entries(headingWords)) if (re.test(t) && visible(h)) feats.push({type, el: h});
   });
-  // "https://www.site.com › products › x" -> "https://www.site.com/products/x"
+  // آدرس نتیجه برای لینک‌های رمزشده: از خط آدرس زیر/کنار عنوان
+  // "https://www.site.com › products › x" یا "www.site.com › x" -> "https://www.site.com/products/x"
+  const parseShown = t => {
+    t = (t || '').trim().replace(/\s+/g, ' ');
+    const m = t.match(/(https?:\/\/)?((?:[a-z0-9\u0600-\u06FF-]+\.)+[a-z\u0600-\u06FF]{2,})((?:\s?›\s?[^›]+)*)/i);
+    if (!m || !m[2].includes('.')) return null;
+    const crumbs = (m[3] || '').split('›').map(x => x.trim()).filter(x => x && x !== '...' && x !== '…');
+    return 'https://' + m[2].toLowerCase() + (crumbs.length ? '/' + crumbs.join('/') : '');
+  };
   const citeUrl = a => {
-    const block = a.closest('[data-rpos], [data-hveid], .MjjYud, .g') || a.parentElement;
-    const cite = a.querySelector('cite') || block?.querySelector('cite');
-    if (!cite) return null;
-    let t = (cite.textContent || '').trim().replace(/\s+/g, ' ');
-    if (!/^https?:\/\//.test(t)) { if (/^[\w.-]+\.[a-z]{2,}/i.test(t)) t = 'https://' + t; else return null; }
-    const parts = t.split(' › ').map(x => x.trim()).filter(x => x && x !== '...' && x !== '…');
-    return parts[0] + (parts.length > 1 ? '/' + parts.slice(1).join('/') : '');
+    // از خود لینک به بالا می‌رویم تا به اولین ظرفی برسیم که خط آدرس دارد،
+    // ولی هنوز فقط همین یک نتیجه را در بر دارد
+    let el = a;
+    for (let i = 0; el && el !== root && i < 12; i++, el = el.parentElement) {
+      if (i > 0 && el.querySelectorAll(candSel).length > 1) break;
+      const c = el.querySelector('cite');
+      if (c) { const u = parseShown(c.textContent); if (u) return u; }
+      for (const sp of el.querySelectorAll('span, div')) {
+        if (sp.children.length > 3) continue;
+        const t = (sp.textContent || '').trim();
+        if (t.length < 200 && (/^https?:\/\//.test(t) || /^(?:www\.)?[a-z0-9-]+\.[a-z.]{2,}\s*(›|$)/i.test(t))) {
+          const u = parseShown(t); if (u) return u;
+        }
+      }
+    }
+    return null;
   };
   // لینک‌های نتیجه: چند الگو، چون گوگل مدام markup را عوض می‌کند
   const candSel = 'a[jsname="UWckNb"], a[href]:has(h3), a[href]:has([role="heading"][aria-level="3"])';
@@ -240,25 +257,16 @@ class BrowserSERP:
     def _search_once(self, keyword, loc, lang, country, device, depth):
         ctx = self._context(loc, lang, country, device)
         page = ctx.new_page()
-        state = {"page": 0}
 
-        def _block(route):
-            rt = route.request.resource_type
-            # فونت و ویدیو هیچ‌وقت لازم نیست؛ تصویر فقط در صفحه اول (برای اسکرین‌شات)
-            if rt in ("font", "media") or (rt == "image" and state["page"] > 0):
-                return route.abort()
-            return route.fallback()
-        page.route("**/*", _block)
         results, features, shot, abs_offset, found_urls = [], [], None, 0, []
         try:
             for start in range(0, depth, 10):
-                state["page"] = start // 10
                 page.goto(self._url(keyword, loc, lang, country, start), wait_until="domcontentloaded", timeout=45000)
                 self._handle_consent(page)
                 if "/sorry/" in page.url or page.query_selector("#captcha-form, form#captcha"):
                     raise CaptchaError("گوگل کپچا نشان داد")
                 try:
-                    page.wait_for_selector("#search, #rso, #main", timeout=15000)
+                    page.wait_for_selector("#rso, #search, #main, #botstuff, a h3, [role='heading'][aria-level='3']", timeout=8000)
                 except Exception:  # noqa: BLE001
                     pass
                 data = page.evaluate(EXTRACT_JS)
