@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>رنک ترکر</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/vendor/leaflet.css">
+<script src="/static/vendor/leaflet.js"></script>
+<script src="/static/vendor/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --text:#1d2330; --muted:#6b7280; --line:#e4e7ec;
+  --primary:#2557d6; --primary-weak:#e8eefc; --good:#15803d; --good-weak:#e7f6ec;
+  --bad:#c2410c; --bad-weak:#fdeee6; --warn:#a16207; --warn-weak:#fdf6e3;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#12151b; --card:#1b1f27; --text:#e6e8ec; --muted:#9aa3b2; --line:#2b313c;
+  --primary:#6b93ff; --primary-weak:#1f2a44; --good:#4ade80; --good-weak:#15291d;
+  --bad:#fb923c; --bad-weak:#2e1d12; --warn:#facc15; --warn-weak:#2b2611;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Vazirmatn,Tahoma,sans-serif;font-size:14px;line-height:1.7}
+header{display:flex;align-items:center;gap:24px;padding:12px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1000}
+header h1{font-size:17px;margin:0;font-weight:700}
+nav{display:flex;gap:4px}
+nav button{background:none;border:0;padding:7px 14px;border-radius:8px;color:var(--muted);font:inherit;cursor:pointer}
+nav button.active{background:var(--primary-weak);color:var(--primary);font-weight:500}
+main{max-width:1200px;margin:0 auto;padding:20px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+.card h2{font-size:15px;margin:0 0 12px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px}
+label{font-size:12.5px;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+textarea{min-height:140px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--primary);outline-offset:-1px}
+.ltr{direction:ltr;text-align:left}
+.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.sm{padding:4px 10px;font-size:12.5px}
+.muted{color:var(--muted)}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12.5px;background:var(--bg)}
+.chip button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0}
+#map{height:340px;border-radius:10px;border:1px solid var(--line);margin-top:8px}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.pitem{border:1px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;background:var(--card)}
+.pitem:hover{border-color:var(--primary)}
+.pitem b{display:block}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle}
+th{color:var(--muted);font-weight:500;font-size:12px;white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--bg)}
+.num{font-variant-numeric:tabular-nums;font-weight:700;font-size:15px}
+.delta{font-size:12px;padding:1px 6px;border-radius:6px;font-weight:500}
+.up{color:var(--good);background:var(--good-weak)} .down{color:var(--bad);background:var(--bad-weak)}
+.tag{font-size:11.5px;padding:1px 7px;border-radius:6px;background:var(--warn-weak);color:var(--warn)}
+.url{direction:ltr;text-align:left;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;color:var(--muted);font-size:12px}
+.progress{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0}
+.progress div{height:100%;background:var(--primary);width:0;transition:width .3s}
+.banner{padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px}
+.banner.warn{background:var(--warn-weak);color:var(--warn)}
+.banner.bad{background:var(--bad-weak);color:var(--bad)}
+.banner.good{background:var(--good-weak);color:var(--good)}
+.hidden{display:none!important}
+.tablewrap{overflow-x:auto}
+.toast{position:fixed;bottom:20px;left:20px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:2000;max-width:420px}
+@media (max-width:640px){header{flex-direction:column;align-items:flex-start;gap:8px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>رنک ترکر</h1>
+  <nav>
+    <button data-tab="projects" class="active">پروژه‌ها</button>
+    <button data-tab="settings">تنظیمات</button>
+  </nav>
+</header>
+<main>
+
+<!-- ===================== projects list ===================== -->
+<section id="tab-projects">
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2 style="margin:0">پروژه‌ها</h2>
+      <button class="btn primary" onclick="openEditor()">+ پروژه جدید</button>
+    </div>
+    <div id="plist" class="plist" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<!-- ===================== project view ===================== -->
+<section id="tab-view" class="hidden">
+  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div><button class="btn sm" onclick="show('projects')">→ بازگشت</button>
+      <b id="v-title" style="font-size:17px;margin-right:10px"></b> <span id="v-domain" class="muted ltr"></span></div>
+    <div class="row">
+      <button class="btn" onclick="syncGsc()" id="gsc-btn">دریافت از Search Console</button>
+      <button class="btn" onclick="openEditor(current)">ویرایش</button>
+      <button class="btn primary" onclick="runCheck()" id="run-btn">بررسی رتبه‌ها</button>
+    </div>
+  </div>
+  <div id="demo-banner" class="banner warn hidden">سرویس جستجو روی «حالت نمایشی» است و اعداد ساختگی‌اند. از بخش تنظیمات سرویس واقعی را انتخاب کنید.</div>
+  <div id="job" class="card hidden">
+    <div id="job-text" class="muted"></div>
+    <div class="progress"><div id="job-bar"></div></div>
+    <div id="job-errors" class="hint" style="color:var(--bad)"></div>
+  </div>
+  <div class="card" id="chart-card" style="display:none">
+    <div class="row" style="justify-content:space-between;align-items:center"><h2 id="chart-title" style="margin:0"></h2>
+      <button class="btn sm" onclick="document.getElementById('chart-card').style.display='none'">بستن</button></div>
+    <div style="height:260px;margin-top:10px"><canvas id="chart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="margin:0">آخرین نتایج</h2>
+      <div class="row">
+        <select id="f-loc" style="width:auto"></select>
+        <select id="f-dev" style="width:auto"></select>
+        <input id="f-q" placeholder="جستجوی کلمه…" style="width:180px">
+      </div>
+    </div>
+    <div id="run-info" class="hint" style="margin-bottom:8px"></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>کلمه کلیدی</th><th>لوکیشن</th><th>دستگاه</th><th>رتبه</th><th>تغییر</th><th>نوسان</th>
+        <th title="با احتساب Featured Snippet، Local Pack و …">رتبه مطلق</th><th title="میانگین ۳۰ روز از Search Console">Search Console</th><th>صفحه</th><th>المان‌های صفحه</th></tr></thead>
+      <tbody id="results"></tbody>
+    </table></div>
+    <p id="empty" class="muted hidden" style="text-align:center;padding:30px">هنوز بررسی‌ای انجام نشده. روی «بررسی رتبه‌ها» بزنید.</p>
+  </div>
+</section>
+
+<!-- ===================== editor ===================== -->
+<section id="tab-editor" class="hidden">
+  <div class="card">
+    <h2 id="e-title">پروژه جدید</h2>
+    <div class="row">
+      <div class="field"><label>نام پروژه</label><input id="e-name"></div>
+      <div class="field"><label>دامنه سایت</label><input id="e-domain" class="ltr" placeholder="example.ir"></div>
+      <div class="field" style="max-width:130px"><label>زبان (hl)</label><input id="e-lang" class="ltr" value="fa"></div>
+      <div class="field" style="max-width:130px"><label>کشور (gl)</label><input id="e-country" class="ltr" value="ir"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>دستگاه</label>
+        <div class="chips"><label class="chip"><input type="checkbox" id="e-mobile" style="width:auto" checked> موبایل</label>
+          <label class="chip"><input type="checkbox" id="e-desktop" style="width:auto"> دسکتاپ</label>
+          <label class="chip"><input type="checkbox" id="e-subs" style="width:auto" checked> زیردامنه‌ها هم حساب شوند</label></div></div>
+      <div class="field"><label>پراپرتی Search Console (اختیاری)</label><input id="e-gsc" class="ltr" placeholder="sc-domain:example.ir  یا  https://example.ir/"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>کلمات کلیدی</h2>
+    <textarea id="e-keywords" placeholder="هر کلمه در یک خط"></textarea>
+    <p class="hint" id="kw-count"></p>
+  </div>
+  <div class="card">
+    <h2>نقطه‌های جغرافیایی</h2>
+    <p class="hint" style="margin-top:0">سه راه: روی نقشه کلیک کنید، مختصات را وارد کنید (از گوگل مپ: راست‌کلیک روی نقطه ← کپی مختصات)، یا نام canonical گوگل را بنویسید. DataForSEO مختصات و نام را قبول می‌کند؛ SerpApi فقط نام.</p>
+    <div class="row">
+      <div class="field"><label>برچسب</label><input id="l-label" placeholder="مثلا تهران - ونک"></div>
+      <div class="field"><label>مختصات (lat, lng)</label><input id="l-coord" class="ltr" placeholder="35.7575, 51.4106"></div>
+      <button class="btn" onclick="addCoordLoc()">افزودن مختصات</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label>یا نام canonical گوگل</label><input id="l-name" class="ltr" placeholder="Tehran,Tehran Province,Iran"></div>
+      <button class="btn" onclick="addNamedLoc()">افزودن با نام</button>
+    </div>
+    <p id="map-off" class="hint hidden">نقشه بارگذاری نشد (اینترنت یا فیلتر). از فیلد مختصات استفاده کنید.</p>
+    <div id="map"></div>
+    <div id="e-locs" class="chips" style="margin-top:10px"></div>
+  </div>
+  <div class="row" style="justify-content:space-between">
+    <button class="btn danger" id="e-delete" onclick="deleteProject()">حذف پروژه</button>
+    <div class="row"><button class="btn" onclick="cancelEdit()">انصراف</button>
+      <button class="btn primary" onclick="saveProject()">ذخیره</button></div>
+  </div>
+</section>
+
+<!-- ===================== settings ===================== -->
+<section id="tab-settings" class="hidden">
+  <div class="card">
+    <h2>سرویس جستجو</h2>
+    <div class="row">
+      <div class="field"><label>سرویس</label>
+        <select id="s-provider">
+          <option value="demo">حالت نمایشی (داده ساختگی، برای تست ظاهر)</option>
+          <option value="dataforseo">DataForSEO (مختصات GPS)</option>
+          <option value="serpapi">SerpApi (نام لوکیشن)</option>
+        </select></div>
+      <div class="field" style="max-width:150px"><label>تعداد تکرار هر جستجو</label><input id="s-samples" type="number" min="1" max="10"></div>
+      <div class="field" style="max-width:150px"><label>عمق (تعداد نتایج)</label><input id="s-depth" type="number" min="10" max="100" step="10"></div>
+      <div class="field" style="max-width:150px"><label>مکث بین جستجوها (ثانیه)</label><input id="s-pause" type="number" min="0" step="0.5"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>DataForSEO Login</label><input id="s-dfs-login" class="ltr"></div>
+      <div class="field"><label>DataForSEO API Password</label><input id="s-dfs-pass" type="password" class="ltr"></div>
+      <div class="field"><label>SerpApi Key</label><input id="s-serp" type="password" class="ltr"></div>
+    </div>
+    <p class="hint">رمزها فقط روی همین کامپیوتر (فایل rank_web.db) ذخیره می‌شوند. اگر خالی بگذارید، مقدار قبلی حفظ می‌شود.</p>
+  </div>
+  <div class="card">
+    <h2>Google Search Console</h2>
+    <p class="hint" style="margin-top:0">محتوای فایل JSON کلید Service Account را اینجا paste کنید. ایمیل Service Account باید در Search Console به سایت اضافه شده باشد.</p>
+    <textarea id="s-gsc" class="ltr" placeholder='{"type": "service_account", ...}'></textarea>
+    <p class="hint" id="s-gsc-state"></p>
+  </div>
+  <button class="btn primary" onclick="saveSettings()">ذخیره تنظیمات</button>
+</section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const fa = n => n == null ? '' : Number(n).toLocaleString('fa-IR', {maximumFractionDigits: 1});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let projects = [], current = null, editing = null, locs = [], map, markers = [], settings = {}, lastRows = [], chart;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, {headers: {'Content-Type': 'application/json'}, ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
+}
+function toast(msg, ms = 3500) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
+function show(tab) {
+  ['projects', 'view', 'editor', 'settings'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active',
+    b.dataset.tab === tab || (b.dataset.tab === 'projects' && (tab === 'view' || tab === 'editor'))));
+  if (tab === 'projects') loadProjects();
+  if (tab === 'settings') loadSettings();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.tab));
+
+// ---------------- projects
+async function loadProjects() {
+  projects = await api('/api/projects');
+  $('plist').innerHTML = projects.length ? projects.map(p => `
+    <div class="pitem" onclick="openProject(${p.id})"><b>${esc(p.name)}</b>
+      <span class="muted ltr" style="display:block">${esc(p.domain)}</span>
+      <span class="hint">${fa(p.keywords.length)} کلمه · ${fa(p.locations.length)} لوکیشن · ${p.devices.map(d => d === 'mobile' ? 'موبایل' : 'دسکتاپ').join('، ')}</span></div>`).join('')
+    : '<p class="muted">هنوز پروژه‌ای ندارید.</p>';
+}
+async function openProject(id) {
+  current = projects.find(p => p.id === id) || current;
+  $('v-title').textContent = current.name; $('v-domain').textContent = current.domain;
+  $('chart-card').style.display = 'none';
+  show('view');
+  settings = await api('/api/settings');
+  $('demo-banner').classList.toggle('hidden', settings.provider !== 'demo');
+  await loadResults(); pollStatus();
+}
+
+// ---------------- editor
+function openEditor(p = null) {
+  editing = p;
+  $('e-title').textContent = p ? 'ویرایش پروژه' : 'پروژه جدید';
+  $('e-name').value = p?.name || ''; $('e-domain').value = p?.domain || '';
+  $('e-lang').value = p?.language || 'fa'; $('e-country').value = p?.country || 'ir';
+  $('e-mobile').checked = p ? p.devices.includes('mobile') : true;
+  $('e-desktop').checked = p ? p.devices.includes('desktop') : false;
+  $('e-subs').checked = p ? p.include_subdomains : true;
+  $('e-gsc').value = p?.gsc_property || '';
+  $('e-keywords').value = (p?.keywords || []).join('\n'); kwCount();
+  $('e-delete').classList.toggle('hidden', !p);
+  locs = JSON.parse(JSON.stringify(p?.locations || []));
+  show('editor');
+  setTimeout(initMap, 50);
+}
+function cancelEdit() { editing ? openProject(editing.id) : show('projects'); }
+function kwCount() {
+  const n = $('e-keywords').value.split('\n').filter(s => s.trim()).length;
+  $('kw-count').textContent = `${fa(n)} کلمه`;
+}
+$('e-keywords').oninput = kwCount;
+
+function initMap() {
+  if (typeof L === 'undefined') { $('map').classList.add('hidden'); $('map-off').classList.remove('hidden'); renderLocs(); return; }
+  if (!map) {
+    L.Icon.Default.imagePath = '/static/vendor/images/';
+    map = L.map('map').setView([32.4, 53.7], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
+    map.on('click', e => {
+      const label = $('l-label').value.trim() || `نقطه ${locs.length + 1}`;
+      locs.push({label, lat: +e.latlng.lat.toFixed(6), lng: +e.latlng.lng.toFixed(6)});
+      $('l-label').value = ''; renderLocs();
+    });
+  }
+  map.invalidateSize(); renderLocs();
+  const pts = locs.filter(l => l.lat != null);
+  if (pts.length) map.fitBounds(L.latLngBounds(pts.map(l => [l.lat, l.lng])).pad(0.5), {maxZoom: 12});
+}
+function renderLocs() {
+  markers.forEach(m => m.remove()); markers = [];
+  if (map) locs.forEach(l => { if (l.lat != null) markers.push(L.marker([l.lat, l.lng]).addTo(map).bindTooltip(l.label)); });
+  $('e-locs').innerHTML = locs.map((l, i) => `<span class="chip">${esc(l.label)}
+    <span class="muted ltr">${l.lat != null ? l.lat.toFixed(3) + ', ' + l.lng.toFixed(3) : esc(l.name)}</span>
+    <button onclick="locs.splice(${i},1);renderLocs()">×</button></span>`).join('') || '<span class="muted">هنوز نقطه‌ای اضافه نشده</span>';
+}
+function addCoordLoc() {
+  const m = $('l-coord').value.replace(/[٠-٩۰-۹]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.includes(d) ? '٠١٢٣٤٥٦٧٨٩'.indexOf(d) : '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)])
+    .match(/(-?\d+(?:\.\d+)?)\s*[,،\s]\s*(-?\d+(?:\.\d+)?)/);
+  if (!m || Math.abs(+m[1]) > 90 || Math.abs(+m[2]) > 180) return toast('مختصات معتبر نیست. مثال: 35.7575, 51.4106');
+  locs.push({label: $('l-label').value.trim() || `نقطه ${locs.length + 1}`, lat: +(+m[1]).toFixed(6), lng: +(+m[2]).toFixed(6)});
+  $('l-coord').value = ''; $('l-label').value = ''; renderLocs();
+  if (map) map.setView([+m[1], +m[2]], 11);
+}
+function addNamedLoc() {
+  const name = $('l-name').value.trim(); if (!name) return;
+  locs.push({label: $('l-label').value.trim() || name.split(',')[0], name});
+  $('l-name').value = ''; $('l-label').value = ''; renderLocs();
+}
+async function saveProject() {
+  const devices = [$('e-mobile').checked && 'mobile', $('e-desktop').checked && 'desktop'].filter(Boolean);
+  const body = {name: $('e-name').value, domain: $('e-domain').value, language: $('e-lang').value.trim(),
+    country: $('e-country').value.trim(), devices, include_subdomains: $('e-subs').checked,
+    gsc_property: $('e-gsc').value, keywords: $('e-keywords').value.split('\n'), locations: locs};
+  try {
+    const p = await api(editing ? `/api/projects/${editing.id}` : '/api/projects', {method: editing ? 'PUT' : 'POST', body});
+    projects = await api('/api/projects'); current = p; toast('ذخیره شد'); openProject(p.id);
+  } catch (e) { toast(e.message); }
+}
+async function deleteProject() {
+  if (!confirm(`پروژه «${editing.name}» و همه تاریخچه آن حذف شود؟`)) return;
+  await api(`/api/projects/${editing.id}`, {method: 'DELETE'}); show('projects');
+}
+
+// ---------------- run & results
+async function runCheck() {
+  try { await api(`/api/projects/${current.id}/run`, {method: 'POST'}); pollStatus(); }
+  catch (e) { toast(e.message); }
+}
+let polling = false;
+async function pollStatus() {
+  if (polling) return; polling = true;
+  try {
+    while (true) {
+      const s = await api('/api/status');
+      const mine = s.project_id === current?.id;
+      $('job').classList.toggle('hidden', !(mine && (s.running || s.message)));
+      $('run-btn').disabled = s.running;
+      if (mine) {
+        $('job-text').textContent = s.running ? `در حال بررسی ${fa(s.done)} از ${fa(s.total)} — ${s.current}` : s.message;
+        $('job-bar').style.width = s.total ? (100 * s.done / s.total) + '%' : '0';
+        $('job-errors').innerHTML = s.errors.slice(-5).map(esc).join('<br>') +
+          (s.errors.length > 5 ? `<br>… و ${fa(s.errors.length - 5)} خطای دیگر` : '');
+      }
+      if (!s.running) { if (mine && s.message) loadResults(); break; }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  } finally { polling = false; }
+}
+async function loadResults() {
+  const d = await api(`/api/projects/${current.id}/results`);
+  lastRows = d.rows;
+  $('empty').classList.toggle('hidden', d.rows.length > 0);
+  $('run-info').textContent = d.run ? `آخرین بررسی: ${new Date(d.run.finished).toLocaleString('fa-IR')} · سرویس: ${d.run.provider}` +
+    (d.run.provider === 'demo' ? ' (ساختگی)' : '') : '';
+  const opts = (sel, vals, all, fmt = v => v) => { const cur = $(sel).value;
+    $(sel).innerHTML = `<option value="">${all}</option>` + [...new Set(vals)].map(v => `<option value="${esc(v)}">${esc(fmt(v))}</option>`).join('');
+    $(sel).value = cur; };
+  opts('f-loc', d.rows.map(r => r.location), 'همه لوکیشن‌ها');
+  opts('f-dev', d.rows.map(r => r.device), 'همه دستگاه‌ها', devName);
+  renderRows();
+}
+const devName = d => d === 'mobile' ? 'موبایل' : d === 'desktop' ? 'دسکتاپ' : d;
+const FEAT = {featured_snippet: 'Featured snippet', people_also_ask: 'PAA', local_pack: 'Local pack', answer_box: 'Answer box',
+  local_results: 'Local pack', top_stories: 'Top stories', images: 'Images', video: 'Video', ai_overview: 'AI Overview'};
+function renderRows() {
+  const loc = $('f-loc').value, dev = $('f-dev').value, q = $('f-q').value.trim().toLowerCase();
+  const rows = lastRows.filter(r => (!loc || r.location === loc) && (!dev || r.device === dev) && (!q || r.keyword.toLowerCase().includes(q)));
+  $('results').innerHTML = rows.map((r, i) => {
+    let delta = '';
+    if (r.median != null && r.previous != null && r.median !== r.previous) {
+      const diff = r.previous - r.median;
+      delta = `<span class="delta ${diff > 0 ? 'up' : 'down'}">${diff > 0 ? '▲' : '▼'} ${fa(Math.abs(diff))}</span>`;
+    } else if (r.median != null && r.previous == null && lastRows.some(x => x.previous != null)) delta = '<span class="delta up">جدید</span>';
+    const rank = r.median != null ? `<span class="num">${fa(r.median)}</span>` + (r.found < r.samples ? ` <span class="tag" title="در بعضی نمونه‌ها پیدا نشد">${fa(r.found)}/${fa(r.samples)}</span>` : '')
+      : r.errors === r.samples ? '<span class="tag">خطا</span>' : '<span class="muted">+۱۰۰</span>';
+    const spread = r.min != null && r.min !== r.max ? `${fa(r.min)}–${fa(r.max)}` : '<span class="muted">ثابت</span>';
+    const g = r.gsc ? `${fa(r.gsc.position)} <span class="hint">(${fa(r.gsc.impressions)} نمایش)</span>` : '<span class="muted">—</span>';
+    const feats = r.features.map(f => `<span class="tag" style="background:var(--primary-weak);color:var(--primary)">${esc(FEAT[f] || f)}</span>`).join(' ');
+    return `<tr onclick="showHistory(${lastRows.indexOf(r)})"><td><b>${esc(r.keyword)}</b></td><td>${esc(r.location)}</td><td>${devName(r.device)}</td>
+      <td>${rank}</td><td>${delta}</td><td>${spread}</td><td>${fa(r.absolute)}</td><td>${g}</td>
+      <td>${r.url ? `<a class="url" href="${esc(r.url)}" target="_blank" onclick="event.stopPropagation()">${esc(r.url.replace(/^https?:\/\//, ''))}</a>` : ''}</td>
+      <td>${feats}</td></tr>`;
+  }).join('');
+}
+['f-loc', 'f-dev', 'f-q'].forEach(id => $(id).oninput = renderRows);
+
+async function showHistory(i) {
+  const r = lastRows[i];
+  const d = await api(`/api/projects/${current.id}/history?` + new URLSearchParams({keyword: r.keyword, location: r.location, device: r.device}));
+  $('chart-card').style.display = ''; $('chart-title').textContent = `${r.keyword} — ${r.location} — ${devName(r.device)}`;
+  const css = getComputedStyle(document.documentElement), c = v => css.getPropertyValue(v).trim();
+  chart?.destroy();
+  const xs = [...d.serp.map(p => new Date(p.ts).getTime()), ...d.gsc.map(p => new Date(p.day).getTime())];
+  const DAY = 864e5, xmin = Math.min(...xs) - DAY / 2, xmax = Math.max(...xs) + DAY / 2;
+  chart = new Chart($('chart'), {
+    type: 'line',
+    data: {datasets: [
+      {label: 'رتبه (بررسی SERP)', data: d.serp.map(p => ({x: new Date(p.ts).getTime(), y: p.median})), borderColor: c('--primary'), backgroundColor: c('--primary'), tension: .2, spanGaps: true},
+      {label: 'میانگین Search Console', data: d.gsc.map(p => ({x: new Date(p.day).getTime(), y: p.pos})), borderColor: c('--good'), backgroundColor: c('--good'), borderDash: [4, 4], pointRadius: 2, tension: .2},
+    ]},
+    options: {maintainAspectRatio: false, interaction: {mode: 'nearest', intersect: false},
+      scales: {y: {reverse: true, min: 1, ticks: {color: c('--muted'), precision: 0}, grid: {color: c('--line')}, title: {display: true, text: 'رتبه', color: c('--muted')}},
+        x: {type: 'linear', min: xmin, max: xmax, ticks: {color: c('--muted'), callback: v => new Date(v).toLocaleDateString('fa-IR')}, grid: {display: false}}},
+      plugins: {legend: {labels: {color: c('--text'), font: {family: 'Vazirmatn'}}},
+        tooltip: {callbacks: {title: it => new Date(it[0].parsed.x).toLocaleString('fa-IR'), label: it => `${it.dataset.label}: ${fa(it.parsed.y)}`}}}}
+  });
+  $('chart-card').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+async function syncGsc() {
+  $('gsc-btn').disabled = true; $('gsc-btn').textContent = 'در حال دریافت…';
+  try { const d = await api(`/api/projects/${current.id}/gsc`, {method: 'POST'});
+    toast(`${fa(d.rows)} ردیف از ${d.site} دریافت شد`); loadResults(); }
+  catch (e) { toast(e.message, 8000); }
+  finally { $('gsc-btn').disabled = false; $('gsc-btn').textContent = 'دریافت از Search Console'; }
+}
+
+// ---------------- settings
+async function loadSettings() {
+  settings = await api('/api/settings');
+  $('s-provider').value = settings.provider; $('s-samples').value = settings.samples;
+  $('s-depth').value = settings.depth; $('s-pause').value = settings.pause_seconds;
+  $('s-dfs-login').value = settings.dataforseo_login;
+  $('s-dfs-pass').placeholder = settings.has_dataforseo_password ? '•••••• (ذخیره شده)' : '';
+  $('s-serp').placeholder = settings.has_serpapi_key ? '•••••• (ذخیره شده)' : '';
+  $('s-dfs-pass').value = $('s-serp').value = $('s-gsc').value = '';
+  $('s-gsc-state').textContent = settings.has_gsc_key_json ? '✓ کلید ذخیره شده است' : 'کلیدی ذخیره نشده';
+}
+async function saveSettings() {
+  try {
+    await api('/api/settings', {method: 'POST', body: {provider: $('s-provider').value, samples: $('s-samples').value,
+      depth: $('s-depth').value, pause_seconds: $('s-pause').value, dataforseo_login: $('s-dfs-login').value.trim(),
+      dataforseo_password: $('s-dfs-pass').value.trim(), serpapi_key: $('s-serp').value.trim(), gsc_key_json: $('s-gsc').value.trim()}});
+    toast('تنظیمات ذخیره شد'); loadSettings();
+  } catch (e) { toast(e.message); }
+}
+
+loadProjects();
+</script>
+</body>
+</html>

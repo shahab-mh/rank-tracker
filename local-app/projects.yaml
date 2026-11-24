@@ -1,0 +1,28 @@
+settings:
+  provider: dataforseo   # dataforseo (مختصات GPS دقیق) یا serpapi (نام لوکیشن / uule)
+  samples: 3             # هر جستجو چند بار تکرار شود؛ میانه گزارش می‌شود
+  depth: 100             # تا چند نتیجه اول بررسی شود
+  pause_seconds: 2
+
+projects:
+  - name: myshop
+    domain: example.ir
+    # gsc_property: sc-domain:example.ir   # یا https://example.ir/ (اگر پراپرتی URL-prefix دارید)
+    include_subdomains: true
+    language: fa          # hl
+    country: ir           # gl
+    devices: [mobile, desktop]
+    keywords:
+      - خرید گوشی
+      - قیمت لپ تاپ
+    locations:
+      # با مختصات دقیق (فقط provider: dataforseo)
+      - label: Tehran-Vanak
+        lat: 35.7575
+        lng: 51.4106
+      - label: Mashhad
+        lat: 36.2970
+        lng: 59.6062
+      # یا با نام canonical گوگل (هر دو provider)
+      # - label: Isfahan
+      #   name: "Isfahan,Isfahan Province,Iran"

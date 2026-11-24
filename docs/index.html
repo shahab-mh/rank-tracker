@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>رنک ترکر</title>
+<meta name="description" content="بررسی رتبه سایت در گوگل برای هر کلمه کلیدی و هر نقطه جغرافیایی">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="style.css">
+<script src="vendor/leaflet.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<header>
+  <h1>رنک ترکر</h1>
+  <nav>
+    <button data-tab="projects" class="active">پروژه‌ها</button>
+    <button data-tab="settings">تنظیمات</button>
+    <button data-tab="help">راهنما</button>
+  </nav>
+</header>
+<main>
+
+<!-- ===================== projects list ===================== -->
+<section id="tab-projects">
+  <div id="first-banner" class="banner warn hidden">برای شروع: یک پروژه بسازید. تا وقتی سرویس جستجو را در <a href="#" onclick="show('settings');return false">تنظیمات</a> وارد نکنید، ابزار با داده ساختگی (حالت نمایشی) کار می‌کند.</div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2 style="margin:0">پروژه‌ها</h2>
+      <button class="btn primary" onclick="openEditor()">+ پروژه جدید</button>
+    </div>
+    <div id="plist" class="plist" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<!-- ===================== project view ===================== -->
+<section id="tab-view" class="hidden">
+  <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div><button class="btn sm" onclick="show('projects')">→ بازگشت</button>
+      <b id="v-title" style="font-size:17px;margin-right:10px"></b> <span id="v-domain" class="muted ltr"></span></div>
+    <div class="row">
+      <button class="btn" onclick="syncGsc()" id="gsc-btn">دریافت از Search Console</button>
+      <button class="btn" onclick="openEditor(current)">ویرایش</button>
+      <button class="btn primary" onclick="runCheck()" id="run-btn">بررسی رتبه‌ها</button>
+    </div>
+  </div>
+  <div id="demo-banner" class="banner warn hidden">سرویس جستجو روی «حالت نمایشی» است و اعداد ساختگی‌اند. از بخش تنظیمات اطلاعات DataForSEO را وارد کنید.</div>
+  <div id="job" class="card hidden">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div id="job-text" class="muted"></div>
+      <button class="btn sm danger" id="stop-btn" onclick="stopRun=true">توقف</button>
+    </div>
+    <div class="progress"><div id="job-bar"></div></div>
+    <div class="hint">تا پایان بررسی این صفحه را نبندید.</div>
+    <div id="job-errors" class="hint" style="color:var(--bad)"></div>
+  </div>
+  <div class="card" id="chart-card" style="display:none">
+    <div class="row" style="justify-content:space-between;align-items:center"><h2 id="chart-title" style="margin:0"></h2>
+      <button class="btn sm" onclick="document.getElementById('chart-card').style.display='none'">بستن</button></div>
+    <div style="height:260px;margin-top:10px"><canvas id="chart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="margin:0">آخرین نتایج</h2>
+      <div class="row">
+        <select id="f-loc" style="width:auto"></select>
+        <select id="f-dev" style="width:auto"></select>
+        <input id="f-q" placeholder="جستجوی کلمه…" style="width:180px">
+        <button class="btn sm" onclick="exportCsv()">خروجی CSV</button>
+      </div>
+    </div>
+    <div id="run-info" class="hint" style="margin-bottom:8px"></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>کلمه کلیدی</th><th>لوکیشن</th><th>دستگاه</th><th>رتبه</th><th>تغییر</th><th>نوسان</th>
+        <th title="با احتساب Featured Snippet، Local Pack و …">رتبه مطلق</th><th title="میانگین ۳۰ روز از Search Console">Search Console</th><th>صفحه</th><th>المان‌های صفحه</th></tr></thead>
+      <tbody id="results"></tbody>
+    </table></div>
+    <p id="empty" class="muted hidden" style="text-align:center;padding:30px">هنوز بررسی‌ای انجام نشده. روی «بررسی رتبه‌ها» بزنید.</p>
+  </div>
+</section>
+
+<!-- ===================== editor ===================== -->
+<section id="tab-editor" class="hidden">
+  <div class="card">
+    <h2 id="e-title">پروژه جدید</h2>
+    <div class="row">
+      <div class="field"><label>نام پروژه</label><input id="e-name"></div>
+      <div class="field"><label>دامنه سایت</label><input id="e-domain" class="ltr" placeholder="example.ir"></div>
+      <div class="field" style="max-width:130px"><label>زبان (hl)</label><input id="e-lang" class="ltr" value="fa"></div>
+      <div class="field" style="max-width:130px"><label>کشور (gl)</label><input id="e-country" class="ltr" value="ir"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>دستگاه</label>
+        <div class="chips"><label class="chip"><input type="checkbox" id="e-mobile" style="width:auto" checked> موبایل</label>
+          <label class="chip"><input type="checkbox" id="e-desktop" style="width:auto"> دسکتاپ</label>
+          <label class="chip"><input type="checkbox" id="e-subs" style="width:auto" checked> زیردامنه‌ها هم حساب شوند</label></div></div>
+      <div class="field"><label>پراپرتی Search Console (اختیاری)</label><input id="e-gsc" class="ltr" placeholder="sc-domain:example.ir  یا  https://example.ir/"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>کلمات کلیدی</h2>
+    <textarea id="e-keywords" placeholder="هر کلمه در یک خط"></textarea>
+    <p class="hint" id="kw-count"></p>
+  </div>
+  <div class="card">
+    <h2>نقطه‌های جغرافیایی</h2>
+    <p class="hint" style="margin-top:0">سه راه: روی نقشه کلیک کنید، مختصات را وارد کنید (در گوگل مپ: راست‌کلیک روی نقطه ← کپی مختصات)، یا نام canonical گوگل را بنویسید.</p>
+    <div class="row">
+      <div class="field"><label>برچسب</label><input id="l-label" placeholder="مثلا تهران - ونک"></div>
+      <div class="field"><label>مختصات (lat, lng)</label><input id="l-coord" class="ltr" placeholder="35.7575, 51.4106"></div>
+      <button class="btn" onclick="addCoordLoc()">افزودن مختصات</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label>یا نام canonical گوگل</label><input id="l-name" class="ltr" placeholder="Tehran,Tehran Province,Iran"></div>
+      <button class="btn" onclick="addNamedLoc()">افزودن با نام</button>
+    </div>
+    <p id="map-off" class="hint hidden">نقشه بارگذاری نشد. از فیلد مختصات استفاده کنید.</p>
+    <div id="map"></div>
+    <div id="e-locs" class="chips" style="margin-top:10px"></div>
+  </div>
+  <div class="row" style="justify-content:space-between">
+    <button class="btn danger" id="e-delete" onclick="deleteProject()">حذف پروژه</button>
+    <div class="row"><button class="btn" onclick="cancelEdit()">انصراف</button>
+      <button class="btn primary" id="e-save" onclick="saveProject()">ذخیره</button></div>
+  </div>
+</section>
+
+<!-- ===================== settings ===================== -->
+<section id="tab-settings" class="hidden">
+  <div class="card">
+    <h2>سرویس جستجو</h2>
+    <div class="row">
+      <div class="field"><label>سرویس</label>
+        <select id="s-provider">
+          <option value="demo">حالت نمایشی (داده ساختگی، برای آشنایی با ابزار)</option>
+          <option value="dataforseo">DataForSEO</option>
+        </select></div>
+      <div class="field" style="max-width:150px"><label>تعداد تکرار هر جستجو</label><input id="s-samples" type="number" min="1" max="10"></div>
+      <div class="field" style="max-width:150px"><label>عمق (تعداد نتایج)</label><input id="s-depth" type="number" min="10" max="100" step="10"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="field"><label>DataForSEO API Login</label><input id="s-dfs-login" class="ltr" autocomplete="off"></div>
+      <div class="field"><label>DataForSEO API Password</label><input id="s-dfs-pass" type="password" class="ltr" autocomplete="new-password"></div>
+      <button class="btn" onclick="testDfs()">تست اتصال</button>
+    </div>
+    <p class="hint">کلیدها فقط در مرورگر خود شما ذخیره می‌شوند و مستقیم به DataForSEO فرستاده می‌شوند؛ هیچ سرور واسطی در کار نیست.</p>
+  </div>
+  <div class="card">
+    <h2>Google Search Console</h2>
+    <p class="hint" style="margin-top:0">برای دریافت رتبه واقعی از Search Console، روی دکمه «دریافت از Search Console» در صفحه پروژه بزنید و با حساب گوگلی که به سایت دسترسی دارد وارد شوید.</p>
+    <div class="row">
+      <div class="field"><label>OAuth Client ID (اختیاری؛ اگر خالی باشد از مقدار پیش‌فرض سایت استفاده می‌شود)</label>
+        <input id="s-gsc-client" class="ltr" placeholder="xxxxxxxx.apps.googleusercontent.com"></div>
+    </div>
+    <p class="hint" id="s-gsc-state"></p>
+  </div>
+  <div class="card">
+    <h2>پشتیبان‌گیری</h2>
+    <p class="hint" style="margin-top:0">همه پروژه‌ها و تاریخچه فقط در همین مرورگر ذخیره شده‌اند. برای انتقال به کامپیوتر دیگر یا جلوگیری از پاک شدن، فایل پشتیبان بگیرید.</p>
+    <div class="row">
+      <button class="btn" onclick="exportBackup()">دانلود فایل پشتیبان</button>
+      <label class="btn">بازگردانی از فایل<input type="file" accept=".json" onchange="importBackup(this.files[0])" style="display:none"></label>
+      <span id="storage-size" class="hint"></span>
+    </div>
+  </div>
+  <button class="btn primary" onclick="saveSettings()">ذخیره تنظیمات</button>
+</section>
+
+<!-- ===================== help ===================== -->
+<section id="tab-help" class="hidden">
+  <div class="card">
+    <h2>این ابزار چطور رتبه را می‌سنجد؟</h2>
+    <ul class="steps">
+      <li>هر جستجو از نقطه دقیق جغرافیایی (مختصات GPS یا نام شهر) و با دستگاه مشخص (موبایل/دسکتاپ) انجام می‌شود.</li>
+      <li>هر جستجو چند بار تکرار می‌شود و <b>میانه</b> گزارش می‌شود؛ ستون «نوسان» نشان می‌دهد رتبه بین دیتاسنترهای گوگل چقدر بالا و پایین می‌رود.</li>
+      <li><b>رتبه</b> فقط بین نتایج ارگانیک است. <b>رتبه مطلق</b> المان‌هایی مثل Featured Snippet و Local Pack را هم می‌شمارد. اختلاف ابزارها اغلب از همین‌جاست.</li>
+      <li>ستون <b>Search Console</b> میانگین رتبه واقعی شما جلوی کاربران واقعی در ۳۰ روز اخیر است (داده خود گوگل). اگر با عدد بررسی فاصله زیادی دارد، به عدد Search Console اعتماد کنید.</li>
+      <li>رتبه‌ای که خودتان در مرورگرتان می‌بینید شخصی‌سازی‌شده است و معیار درستی برای مقایسه نیست.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>شروع کار</h2>
+    <ol class="steps">
+      <li>در <code>dataforseo.com</code> ثبت‌نام کنید و از داشبورد، API Login و API Password را بردارید.</li>
+      <li>در تب «تنظیمات» آن‌ها را وارد کنید و «تست اتصال» را بزنید.</li>
+      <li>یک پروژه بسازید: دامنه، کلمات کلیدی و نقطه‌های جغرافیایی.</li>
+      <li>«بررسی رتبه‌ها» را بزنید. هزینه هر بررسی = کلمات × نقطه‌ها × دستگاه‌ها × تعداد تکرار جستجو.</li>
+      <li>اختیاری: «دریافت از Search Console» را بزنید تا رتبه واقعی هم کنار نتایج بیاید.</li>
+    </ol>
+  </div>
+</section>
+</main>
+<div class="foot">داده‌های شما فقط در مرورگر خودتان ذخیره می‌شود. · <a href="https://github.com/Shahab-1997/rank-tracker" target="_blank" style="color:inherit">کد منبع</a></div>
+<script src="app.js"></script>
+</body>
+</html>
