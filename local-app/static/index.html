@@ -70,6 +70,7 @@ tbody tr:hover{background:var(--bg)}
 .banner.good{background:var(--good-weak);color:var(--good)}
 .hidden{display:none!important}
 .tablewrap{overflow-x:auto}
+code{direction:ltr;unicode-bidi:embed;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:0 5px;font-size:12px}
 .toast{position:fixed;bottom:20px;left:20px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:2000;max-width:420px}
 @media (max-width:640px){header{flex-direction:column;align-items:flex-start;gap:8px}}
 </style>
@@ -129,7 +130,7 @@ tbody tr:hover{background:var(--bg)}
     <div id="run-info" class="hint" style="margin-bottom:8px"></div>
     <div class="tablewrap"><table>
       <thead><tr><th>کلمه کلیدی</th><th>لوکیشن</th><th>دستگاه</th><th>رتبه</th><th>تغییر</th><th>نوسان</th>
-        <th title="با احتساب Featured Snippet، Local Pack و …">رتبه مطلق</th><th title="میانگین ۳۰ روز از Search Console">Search Console</th><th>صفحه</th><th>المان‌های صفحه</th></tr></thead>
+        <th title="با احتساب Featured Snippet، Local Pack و …">رتبه مطلق</th><th title="میانگین ۳۰ روز از Search Console">Search Console</th><th>صفحه</th><th>المان‌های صفحه</th><th>اسکرین‌شات</th></tr></thead>
       <tbody id="results"></tbody>
     </table></div>
     <p id="empty" class="muted hidden" style="text-align:center;padding:30px">هنوز بررسی‌ای انجام نشده. روی «بررسی رتبه‌ها» بزنید.</p>
@@ -171,6 +172,12 @@ tbody tr:hover{background:var(--bg)}
       <div class="field"><label>یا نام canonical گوگل</label><input id="l-name" class="ltr" placeholder="Tehran,Tehran Province,Iran"></div>
       <button class="btn" onclick="addNamedLoc()">افزودن با نام</button>
     </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label>کشور پراکسی (اختیاری)</label><input id="l-pcountry" class="ltr" placeholder="us"></div>
+      <div class="field"><label>شهر پراکسی (اختیاری)</label><input id="l-pcity" class="ltr" placeholder="newyork"></div>
+      <div class="field"><label>منطقه زمانی (اختیاری)</label><input id="l-tz" class="ltr" placeholder="America/New_York"></div>
+    </div>
+    <p class="hint">این سه فیلد قبل از افزودن هر نقطه پر شوند تا روی همان نقطه ذخیره شوند (برای حالت مرورگر واقعی + پراکسی).</p>
     <p id="map-off" class="hint hidden">نقشه بارگذاری نشد (اینترنت یا فیلتر). از فیلد مختصات استفاده کنید.</p>
     <div id="map"></div>
     <div id="e-locs" class="chips" style="margin-top:10px"></div>
@@ -189,6 +196,7 @@ tbody tr:hover{background:var(--bg)}
     <div class="row">
       <div class="field"><label>سرویس</label>
         <select id="s-provider">
+          <option value="browser">مرورگر واقعی Chrome (دقیق‌ترین؛ رتبه همین لحظه + اسکرین‌شات)</option>
           <option value="demo">حالت نمایشی (داده ساختگی، برای تست ظاهر)</option>
           <option value="dataforseo">DataForSEO (مختصات GPS)</option>
           <option value="serpapi">SerpApi (نام لوکیشن)</option>
@@ -203,6 +211,17 @@ tbody tr:hover{background:var(--bg)}
       <div class="field"><label>SerpApi Key</label><input id="s-serp" type="password" class="ltr"></div>
     </div>
     <p class="hint">رمزها فقط روی همین کامپیوتر (فایل rank_web.db) ذخیره می‌شوند. اگر خالی بگذارید، مقدار قبلی حفظ می‌شود.</p>
+  </div>
+  <div class="card">
+    <h2>مرورگر واقعی و پراکسی</h2>
+    <p class="hint" style="margin-top:0">برای رتبه دقیق یک کشور یا شهر خارجی، جستجو باید از IP همان محل انجام شود. یک پراکسی <b>residential</b> با امکان انتخاب شهر تهیه کنید (مثل Bright Data، Oxylabs، Decodo، IPRoyal) و اطلاعاتش را اینجا وارد کنید. بدون پراکسی، جستجو با اینترنت همین کامپیوتر انجام می‌شود.</p>
+    <div class="row">
+      <div class="field"><label>آدرس پراکسی</label><input id="s-proxy-server" class="ltr" placeholder="http://gate.provider.com:7000"></div>
+      <div class="field"><label>نام کاربری (الگو)</label><input id="s-proxy-user" class="ltr" placeholder="user-country-{country}-city-{city}-session-{session}"></div>
+      <div class="field"><label>رمز پراکسی</label><input id="s-proxy-pass" type="password" class="ltr"></div>
+    </div>
+    <p class="hint"><code>{country}</code>، <code>{city}</code> و <code>{session}</code> در نام کاربری برای هر لوکیشن جایگزین می‌شوند (فرمت دقیق را از مستندات سرویس پراکسی بردارید). هر جستجو یک session و IP تازه می‌گیرد.</p>
+    <label class="chip" style="margin-top:8px;width:auto;display:inline-flex"><input type="checkbox" id="s-headless" style="width:auto"> مرورگر پنهان اجرا شود (اگر زیاد کپچا می‌گیرید، تیک را بردارید)</label>
   </div>
   <div class="card">
     <h2>Google Search Console</h2>
@@ -286,11 +305,11 @@ function initMap() {
   if (typeof L === 'undefined') { $('map').classList.add('hidden'); $('map-off').classList.remove('hidden'); renderLocs(); return; }
   if (!map) {
     L.Icon.Default.imagePath = '/static/vendor/images/';
-    map = L.map('map').setView([32.4, 53.7], 5);
+    map = L.map('map').setView([30, 10], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
     map.on('click', e => {
       const label = $('l-label').value.trim() || `نقطه ${locs.length + 1}`;
-      locs.push({label, lat: +e.latlng.lat.toFixed(6), lng: +e.latlng.lng.toFixed(6)});
+      locs.push({label, lat: +e.latlng.lat.toFixed(6), lng: +e.latlng.lng.toFixed(6), ...locExtra()});
       $('l-label').value = ''; renderLocs();
     });
   }
@@ -302,20 +321,25 @@ function renderLocs() {
   markers.forEach(m => m.remove()); markers = [];
   if (map) locs.forEach(l => { if (l.lat != null) markers.push(L.marker([l.lat, l.lng]).addTo(map).bindTooltip(l.label)); });
   $('e-locs').innerHTML = locs.map((l, i) => `<span class="chip">${esc(l.label)}
-    <span class="muted ltr">${l.lat != null ? l.lat.toFixed(3) + ', ' + l.lng.toFixed(3) : esc(l.name)}</span>
+    <span class="muted ltr">${l.lat != null ? l.lat.toFixed(3) + ', ' + l.lng.toFixed(3) : esc(l.name)}${l.proxy_country ? ' · proxy ' + esc(l.proxy_country) + (l.proxy_city ? '/' + esc(l.proxy_city) : '') : ''}</span>
     <button onclick="locs.splice(${i},1);renderLocs()">×</button></span>`).join('') || '<span class="muted">هنوز نقطه‌ای اضافه نشده</span>';
 }
 function addCoordLoc() {
   const m = $('l-coord').value.replace(/[٠-٩۰-۹]/g, d => '0123456789'['٠١٢٣٤٥٦٧٨٩'.includes(d) ? '٠١٢٣٤٥٦٧٨٩'.indexOf(d) : '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)])
     .match(/(-?\d+(?:\.\d+)?)\s*[,،\s]\s*(-?\d+(?:\.\d+)?)/);
   if (!m || Math.abs(+m[1]) > 90 || Math.abs(+m[2]) > 180) return toast('مختصات معتبر نیست. مثال: 35.7575, 51.4106');
-  locs.push({label: $('l-label').value.trim() || `نقطه ${locs.length + 1}`, lat: +(+m[1]).toFixed(6), lng: +(+m[2]).toFixed(6)});
+  locs.push({label: $('l-label').value.trim() || `نقطه ${locs.length + 1}`, lat: +(+m[1]).toFixed(6), lng: +(+m[2]).toFixed(6), ...locExtra()});
   $('l-coord').value = ''; $('l-label').value = ''; renderLocs();
   if (map) map.setView([+m[1], +m[2]], 11);
 }
+function locExtra() {
+  const o = {}, pc = $('l-pcountry').value.trim(), ci = $('l-pcity').value.trim(), tz = $('l-tz').value.trim();
+  if (pc) o.proxy_country = pc; if (ci) o.proxy_city = ci; if (tz) o.timezone = tz;
+  return o;
+}
 function addNamedLoc() {
   const name = $('l-name').value.trim(); if (!name) return;
-  locs.push({label: $('l-label').value.trim() || name.split(',')[0], name});
+  locs.push({label: $('l-label').value.trim() || name.split(',')[0], name, ...locExtra()});
   $('l-name').value = ''; $('l-label').value = ''; renderLocs();
 }
 async function saveProject() {
@@ -391,7 +415,7 @@ function renderRows() {
     return `<tr onclick="showHistory(${lastRows.indexOf(r)})"><td><b>${esc(r.keyword)}</b></td><td>${esc(r.location)}</td><td>${devName(r.device)}</td>
       <td>${rank}</td><td>${delta}</td><td>${spread}</td><td>${fa(r.absolute)}</td><td>${g}</td>
       <td>${r.url ? `<a class="url" href="${esc(r.url)}" target="_blank" onclick="event.stopPropagation()">${esc(r.url.replace(/^https?:\/\//, ''))}</a>` : ''}</td>
-      <td>${feats}</td></tr>`;
+      <td>${feats}</td><td>${(r.screenshots || []).map((n, k) => `<a href="/shots/${esc(n)}" target="_blank" onclick="event.stopPropagation()">${fa(k + 1)}</a>`).join(' ')}</td></tr>`;
   }).join('');
 }
 ['f-loc', 'f-dev', 'f-q'].forEach(id => $(id).oninput = renderRows);
@@ -435,13 +459,18 @@ async function loadSettings() {
   $('s-dfs-pass').placeholder = settings.has_dataforseo_password ? '•••••• (ذخیره شده)' : '';
   $('s-serp').placeholder = settings.has_serpapi_key ? '•••••• (ذخیره شده)' : '';
   $('s-dfs-pass').value = $('s-serp').value = $('s-gsc').value = '';
+  $('s-proxy-server').value = settings.proxy_server; $('s-proxy-user').value = settings.proxy_username;
+  $('s-proxy-pass').value = ''; $('s-proxy-pass').placeholder = settings.has_proxy_password ? '•••••• (ذخیره شده)' : '';
+  $('s-headless').checked = settings.browser_headless === '1';
   $('s-gsc-state').textContent = settings.has_gsc_key_json ? '✓ کلید ذخیره شده است' : 'کلیدی ذخیره نشده';
 }
 async function saveSettings() {
   try {
     await api('/api/settings', {method: 'POST', body: {provider: $('s-provider').value, samples: $('s-samples').value,
       depth: $('s-depth').value, pause_seconds: $('s-pause').value, dataforseo_login: $('s-dfs-login').value.trim(),
-      dataforseo_password: $('s-dfs-pass').value.trim(), serpapi_key: $('s-serp').value.trim(), gsc_key_json: $('s-gsc').value.trim()}});
+      dataforseo_password: $('s-dfs-pass').value.trim(), serpapi_key: $('s-serp').value.trim(), gsc_key_json: $('s-gsc').value.trim(),
+      proxy_server: $('s-proxy-server').value.trim(), proxy_username: $('s-proxy-user').value.trim(),
+      proxy_password: $('s-proxy-pass').value.trim(), browser_headless: $('s-headless').checked ? '1' : '0'}});
     toast('تنظیمات ذخیره شد'); loadSettings();
   } catch (e) { toast(e.message); }
 }

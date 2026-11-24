@@ -13,19 +13,21 @@ import time
 import webbrowser
 from datetime import date, datetime, timedelta, timezone
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, abort, jsonify, request, send_from_directory
 
 import tracker
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("RANK_WEB_DB", os.path.join(BASE, "rank_web.db"))
+SHOTS = os.environ.get("RANK_SHOTS", os.path.join(BASE, "screenshots"))
 app = Flask(__name__, static_folder=os.path.join(BASE, "static"))
 
 DEFAULT_SETTINGS = {
     "provider": "demo", "samples": "3", "depth": "100", "pause_seconds": "1",
     "dataforseo_login": "", "dataforseo_password": "", "serpapi_key": "", "gsc_key_json": "",
+    "browser_headless": "1", "proxy_server": "", "proxy_username": "", "proxy_password": "",
 }
-SECRET_KEYS = {"dataforseo_password", "serpapi_key", "gsc_key_json"}
+SECRET_KEYS = {"dataforseo_password", "serpapi_key", "gsc_key_json", "proxy_password"}
 
 
 # ----------------------------------------------------------------------------- db
@@ -60,6 +62,9 @@ def init_db():
             PRIMARY KEY (day, project_id, query, page, device)
         );
         """)
+        cols = [r[1] for r in c.execute("PRAGMA table_info(checks)")]
+        if "screenshot" not in cols:
+            c.execute("ALTER TABLE checks ADD COLUMN screenshot TEXT")
         for k, v in DEFAULT_SETTINGS.items():
             c.execute("INSERT OR IGNORE INTO settings VALUES (?,?)", (k, v))
 
@@ -107,6 +112,10 @@ def make_provider(s, project):
         if not s["dataforseo_login"] or not s["dataforseo_password"]:
             raise ValueError("اطلاعات DataForSEO در تنظیمات وارد نشده")
         return tracker.DataForSEO(s["dataforseo_login"], s["dataforseo_password"])
+    if p == "browser":
+        from browser_serp import BrowserSERP  # noqa: PLC0415
+        proxy = {"server": s["proxy_server"], "username": s["proxy_username"], "password": s["proxy_password"]}
+        return BrowserSERP(proxy=proxy, headless=s["browser_headless"] == "1", screenshot_dir=SHOTS)
     if p == "serpapi":
         if not s["serpapi_key"]:
             raise ValueError("کلید SerpApi در تنظیمات وارد نشده")
@@ -132,6 +141,8 @@ def run_job(pid):
         samples, depth, pause = int(s["samples"]), int(s["depth"]), float(s["pause_seconds"])
         if s["provider"] == "demo":
             pause = 0.05
+        if s["provider"] == "browser":
+            pause = max(pause, 4)  # فاصله کمتر = کپچا
         if s["provider"] == "serpapi" and any("lat" in l and "name" not in l for l in proj["locations"]):
             raise ValueError("SerpApi مختصات GPS قبول نمی‌کند؛ برای لوکیشن‌ها نام canonical وارد کنید یا DataForSEO را انتخاب کنید")
         combos = [(l, d, k) for l in proj["locations"] for d in proj["devices"] for k in proj["keywords"]]
@@ -143,20 +154,21 @@ def run_job(pid):
             label = loc_label(loc)
             for smp in range(1, samples + 1):
                 JOB["current"] = f"{kw} | {label} | {DEVN.get(dev, dev)} | نمونه {smp}"
-                org = absr = url = err = None
+                org = absr = url = err = shot = None
                 feats, raw = [], None
                 try:
                     results, raw = provider.search(kw, loc, proj["language"], proj["country"], dev, depth)
                     org, absr, url = tracker.find_rank(results, proj["domain"], proj["include_subdomains"])
                     feats = sorted({r["type"] for r in results if r["type"] != "organic"})
+                    shot = raw.get("screenshot") if isinstance(raw, dict) else None
                 except Exception as e:  # noqa: BLE001
                     err = str(e)[:500]
                     JOB["errors"].append(f"{kw} @ {label} [{dev}]: {err}")
                 with con() as c:
                     c.execute("INSERT INTO checks (run_id,project_id,ts,keyword,location,device,sample,organic_rank,"
-                              "absolute_rank,ranked_url,serp_features,raw,error) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                              "absolute_rank,ranked_url,serp_features,raw,error,screenshot) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                               (run_id, pid, now(), kw, label, dev, smp, org, absr, url, json.dumps(feats),
-                               json.dumps(raw, ensure_ascii=False) if raw is not None else None, err))
+                               json.dumps(raw, ensure_ascii=False) if raw is not None else None, err, shot))
                 JOB["done"] += 1
                 time.sleep(pause)
         with con() as c:
@@ -166,6 +178,10 @@ def run_job(pid):
         JOB["message"] = f"خطا: {e}"
     finally:
         JOB["running"] = False
+        try:
+            provider.close()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def now():
@@ -189,7 +205,8 @@ def aggregate(rows):
             "found": len(org), "samples": len(rs),
             "errors": sum(1 for r in rs if r["error"]),
             "url": max(set(urls), key=urls.count) if urls else None,
-            "features": json.loads(rs[0]["serp_features"] or "[]"),
+            "features": json.loads(next((r["serp_features"] for r in rs if not r["error"]), "[]") or "[]"),
+            "screenshots": [r["screenshot"] for r in rs if r["screenshot"]],
             "ts": max(r["ts"] for r in rs),
         }
     return out
@@ -199,6 +216,13 @@ def aggregate(rows):
 @app.get("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
+
+
+@app.get("/shots/<name>")
+def shots(name):
+    if "/" in name or "\\" in name or not name.endswith(".jpg"):
+        abort(404)
+    return send_from_directory(SHOTS, name)
 
 
 @app.get("/api/settings")

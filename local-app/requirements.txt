@@ -3,3 +3,4 @@ requests
 pyyaml
 google-api-python-client
 google-auth
+playwright>=1.45

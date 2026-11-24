@@ -5,5 +5,6 @@ where python >nul 2>nul || (echo Python not found. Install it from https://www.p
 if not exist .venv (python -m venv .venv)
 call .venv\Scripts\activate.bat
 pip install -q -r requirements.txt
+if not exist .browser-ok (python -m playwright install chromium && echo ok> .browser-ok)
 python app.py
 pause

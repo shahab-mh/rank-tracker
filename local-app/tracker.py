@@ -53,6 +53,9 @@ class Provider:
     def search(self, keyword, loc, lang, country, device, depth):
         raise NotImplementedError
 
+    def close(self):
+        pass
+
 
 class DataForSEO(Provider):
     """پشتیبانی از مختصات دقیق GPS (location_coordinate) -> بهترین گزینه برای «هر نقطه جغرافیایی»."""

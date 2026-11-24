@@ -4,4 +4,5 @@ command -v python3 >/dev/null || { echo "Python 3 not found. Install from https:
 [ -d .venv ] || python3 -m venv .venv
 source .venv/bin/activate
 pip install -q -r requirements.txt
+[ -f .browser-ok ] || { python -m playwright install chromium && touch .browser-ok; }
 python app.py
