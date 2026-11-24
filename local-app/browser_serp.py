@@ -75,11 +75,22 @@ EXTRACT_JS = r"""
     images: /^Images$|تصاویر|^Bilder$/i,
   };
   const feats = [];
-  for (const [type, sel] of featureDefs) document.querySelectorAll(sel).forEach(el => feats.push({type, el, box: true}));
+  const visible = el => (el.textContent || '').trim().length > 0 && el.getBoundingClientRect().height > 1;
+  for (const [type, sel] of featureDefs) document.querySelectorAll(sel).forEach(el => { if (visible(el)) feats.push({type, el, box: true}); });
   document.querySelectorAll('[role="heading"], h2, .mgAbYb').forEach(h => {
     const t = (h.textContent || '').trim();
-    for (const [type, re] of Object.entries(headingWords)) if (re.test(t)) feats.push({type, el: h});
+    for (const [type, re] of Object.entries(headingWords)) if (re.test(t) && visible(h)) feats.push({type, el: h});
   });
+  // "https://www.site.com › products › x" -> "https://www.site.com/products/x"
+  const citeUrl = a => {
+    const block = a.closest('[data-rpos], [data-hveid], .MjjYud, .g') || a.parentElement;
+    const cite = a.querySelector('cite') || block?.querySelector('cite');
+    if (!cite) return null;
+    let t = (cite.textContent || '').trim().replace(/\s+/g, ' ');
+    if (!/^https?:\/\//.test(t)) { if (/^[\w.-]+\.[a-z]{2,}/i.test(t)) t = 'https://' + t; else return null; }
+    const parts = t.split(' › ').map(x => x.trim()).filter(x => x && x !== '...' && x !== '…');
+    return parts[0] + (parts.length > 1 ? '/' + parts.slice(1).join('/') : '');
+  };
   // لینک‌های نتیجه: چند الگو، چون گوگل مدام markup را عوض می‌کند
   const candSel = 'a[jsname="UWckNb"], a[href]:has(h3), a[href]:has([role="heading"][aria-level="3"])';
   const cands = [...root.querySelectorAll(candSel)];
@@ -92,15 +103,21 @@ EXTRACT_JS = r"""
     if (a.closest(skipInside) || boxes.some(f => f.el.contains(a))) return;
     const h3 = a.querySelector('h3, [role="heading"]') || a;
     let href = a.href;
+    const key = a.getAttribute('href');
     try {
       const u = new URL(href);
       if (/(^|\.)google\.[a-z.]+$/.test(u.hostname)) {
-        if (u.pathname === '/url' && (u.searchParams.get('q') || u.searchParams.get('url'))) href = u.searchParams.get('q') || u.searchParams.get('url');
-        else return;
+        const q = u.pathname === '/url' && (u.searchParams.get('q') || u.searchParams.get('url'));
+        if (q && /^https?:/.test(q)) href = q;
+        else {
+          // لینک رمزشده گوگل (/goto?url=...): آدرس را از خط سبز زیر نتیجه (cite) بخوان
+          href = citeUrl(a);
+          if (!href) return;
+        }
       }
     } catch (e) { return; }
-    if (!/^https?:/.test(href) || seen.has(href)) return;
-    seen.add(href);
+    if (!/^https?:/.test(href) || seen.has(key)) return;
+    seen.add(key);
     // تعداد المان‌های غیر ارگانیکِ قبل از این نتیجه -> رتبه مطلق
     const before = new Set(real.filter(f => !f.el.contains(a) && (f.el.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING)).map(f => f.type + '|' + (f.el.closest('[data-hveid]')?.getAttribute('data-hveid') || '')));
     organic.push({url: href, title: (h3.textContent || '').trim().slice(0, 200), featuresBefore: before.size});
