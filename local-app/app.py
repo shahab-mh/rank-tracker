@@ -152,6 +152,7 @@ def run_job(pid):
         if s["provider"] == "serpapi" and any("lat" in l and "name" not in l for l in proj["locations"]):
             raise ValueError("SerpApi مختصات GPS قبول نمی‌کند؛ برای لوکیشن‌ها نام canonical وارد کنید یا DataForSEO را انتخاب کنید")
         proj["locations"] = [fix_loc(l) for l in proj["locations"]]
+        provider.target = (proj["domain"], proj["include_subdomains"])
         combos = [(l, d, k) for l in proj["locations"] for d in proj["devices"] for k in proj["keywords"]]
         JOB.update(total=len(combos) * samples, done=0, errors=[], message="")
         with con() as c:

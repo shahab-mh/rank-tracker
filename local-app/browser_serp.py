@@ -16,6 +16,11 @@ import time
 import uuid
 from urllib.parse import quote, urlencode
 
+try:
+    from tracker import url_matches
+except ImportError:  # pragma: no cover
+    url_matches = None
+
 UULE_KEY = string.ascii_uppercase + string.ascii_lowercase + string.digits + "-_"
 
 
@@ -135,7 +140,7 @@ class BrowserSERP:
     """
 
     def __init__(self, proxy=None, headless=True, screenshot_dir="screenshots", executable_path=None,
-                 max_retries=3, page_delay=(2.0, 4.5)):
+                 max_retries=3, page_delay=(1.0, 2.5)):
         self.proxy = proxy if proxy and proxy.get("server") else None
         self.headless = headless
         self.screenshot_dir = screenshot_dir
@@ -143,6 +148,7 @@ class BrowserSERP:
         self.max_retries = max_retries
         self.page_delay = page_delay
         self._pw = self._browser = None
+        self.target = None  # (domain, include_subdomains): وقتی پیدا شد صفحات بعدی خوانده نمی‌شوند
         os.makedirs(screenshot_dir, exist_ok=True)
 
     # --------------------------------------------------------------- lifecycle
@@ -234,9 +240,19 @@ class BrowserSERP:
     def _search_once(self, keyword, loc, lang, country, device, depth):
         ctx = self._context(loc, lang, country, device)
         page = ctx.new_page()
+        state = {"page": 0}
+
+        def _block(route):
+            rt = route.request.resource_type
+            # فونت و ویدیو هیچ‌وقت لازم نیست؛ تصویر فقط در صفحه اول (برای اسکرین‌شات)
+            if rt in ("font", "media") or (rt == "image" and state["page"] > 0):
+                return route.abort()
+            return route.fallback()
+        page.route("**/*", _block)
         results, features, shot, abs_offset, found_urls = [], [], None, 0, []
         try:
             for start in range(0, depth, 10):
+                state["page"] = start // 10
                 page.goto(self._url(keyword, loc, lang, country, start), wait_until="domcontentloaded", timeout=45000)
                 self._handle_consent(page)
                 if "/sorry/" in page.url or page.query_selector("#captcha-form, form#captcha"):
@@ -263,6 +279,9 @@ class BrowserSERP:
                     results.append({"type": "organic", "organic_rank": rank, "absolute_rank": absolute, "url": o["url"]})
                 if start == 0 and results:
                     abs_offset = results[-1]["absolute_rank"] - results[-1]["organic_rank"]
+                if self.target and url_matches and any(
+                        r["type"] == "organic" and url_matches(r["url"], *self.target) for r in results):
+                    break  # سایت پیدا شد؛ خواندن صفحات بعدی لازم نیست
                 if not data["organic"] or len(results) >= depth:
                     break
                 time.sleep(random.uniform(*self.page_delay))
