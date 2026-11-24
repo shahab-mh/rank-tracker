@@ -129,6 +129,12 @@ LOCK = threading.Lock()
 DEVN = {"mobile": "موبایل", "desktop": "دسکتاپ"}
 
 
+def fix_loc(loc):
+    if loc.get("lat") is not None:
+        loc = dict(loc, lng=round(((float(loc["lng"]) + 180) % 360 + 360) % 360 - 180, 6))
+    return loc
+
+
 def loc_label(loc):
     return loc.get("label") or loc.get("name") or f'{loc["lat"]:.4f},{loc["lng"]:.4f}'
 
@@ -145,6 +151,7 @@ def run_job(pid):
             pause = max(pause, 4)  # فاصله کمتر = کپچا
         if s["provider"] == "serpapi" and any("lat" in l and "name" not in l for l in proj["locations"]):
             raise ValueError("SerpApi مختصات GPS قبول نمی‌کند؛ برای لوکیشن‌ها نام canonical وارد کنید یا DataForSEO را انتخاب کنید")
+        proj["locations"] = [fix_loc(l) for l in proj["locations"]]
         combos = [(l, d, k) for l in proj["locations"] for d in proj["devices"] for k in proj["keywords"]]
         JOB.update(total=len(combos) * samples, done=0, errors=[], message="")
         with con() as c:
@@ -263,7 +270,7 @@ def api_save_project(pid=None):
     vals = (d["name"].strip(), tracker.norm_domain(d["domain"]), int(bool(d.get("include_subdomains", True))),
             d.get("language", "fa"), d.get("country", "ir"), json.dumps(d.get("devices") or ["mobile"]),
             json.dumps([k.strip() for k in d.get("keywords", []) if k.strip()], ensure_ascii=False),
-            json.dumps(d.get("locations", []), ensure_ascii=False), d.get("gsc_property", "").strip())
+            json.dumps([fix_loc(l) for l in d.get("locations", [])], ensure_ascii=False), d.get("gsc_property", "").strip())
     with con() as c:
         if pid:
             c.execute("UPDATE projects SET name=?,domain=?,include_subdomains=?,language=?,country=?,devices=?,"

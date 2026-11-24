@@ -305,11 +305,11 @@ function initMap() {
   if (typeof L === 'undefined') { $('map').classList.add('hidden'); $('map-off').classList.remove('hidden'); renderLocs(); return; }
   if (!map) {
     L.Icon.Default.imagePath = '/static/vendor/images/';
-    map = L.map('map').setView([30, 10], 2);
+    map = L.map('map', {worldCopyJump: true}).setView([30, 10], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
     map.on('click', e => {
       const label = $('l-label').value.trim() || `نقطه ${locs.length + 1}`;
-      locs.push({label, lat: +e.latlng.lat.toFixed(6), lng: +e.latlng.lng.toFixed(6), ...locExtra()});
+      locs.push({label, lat: +e.latlng.wrap().lat.toFixed(6), lng: +e.latlng.wrap().lng.toFixed(6), ...locExtra()});
       $('l-label').value = ''; renderLocs();
     });
   }

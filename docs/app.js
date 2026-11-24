@@ -66,7 +66,7 @@ const dfsProvider = {
   async search(kw, loc, lang, country, device, depth) {
     const s = S.settings;
     const task = {keyword: kw, language_code: lang, device, os: device === 'mobile' ? 'android' : 'windows', depth};
-    if (loc.lat != null) task.location_coordinate = `${loc.lat},${loc.lng}`;
+    if (loc.lat != null) task.location_coordinate = `${loc.lat},${(((loc.lng + 180) % 360 + 360) % 360 - 180).toFixed(6)}`;
     else task.location_name = loc.name;
     let r;
     try {
@@ -151,10 +151,10 @@ function initMap() {
   if (typeof L === 'undefined') { $('map').classList.add('hidden'); $('map-off').classList.remove('hidden'); renderLocs(); return; }
   if (!map) {
     L.Icon.Default.imagePath = 'vendor/images/';
-    map = L.map('map').setView([32.4, 53.7], 5);
+    map = L.map('map', {worldCopyJump: true}).setView([32.4, 53.7], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
     map.on('click', e => {
-      locs.push({label: $('l-label').value.trim() || `نقطه ${locs.length + 1}`, lat: +e.latlng.lat.toFixed(6), lng: +e.latlng.lng.toFixed(6)});
+      locs.push({label: $('l-label').value.trim() || `نقطه ${locs.length + 1}`, lat: +e.latlng.wrap().lat.toFixed(6), lng: +e.latlng.wrap().lng.toFixed(6)});
       $('l-label').value = ''; renderLocs();
     });
   }

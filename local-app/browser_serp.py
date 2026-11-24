@@ -32,6 +32,16 @@ def uule_for_coords(lat: float, lng: float, radius_m: int = 1000) -> str:
     return "a+" + quote(base64.b64encode(s.encode()).decode())
 
 
+def normalize_loc(loc):
+    """طول جغرافیایی را به بازه -180..180 برمی‌گرداند (کلیک روی کپی‌های تکراری نقشه)."""
+    if loc.get("lat") is None:
+        return loc
+    loc = dict(loc)
+    loc["lng"] = round(((float(loc["lng"]) + 180) % 360 + 360) % 360 - 180, 6)
+    loc["lat"] = max(-90.0, min(90.0, float(loc["lat"])))
+    return loc
+
+
 class CaptchaError(Exception):
     pass
 
@@ -234,6 +244,7 @@ class BrowserSERP:
         return results, {"screenshot": shot, "engine": "browser", "proxy": bool(self.proxy)}
 
     def search(self, keyword, loc, lang, country, device, depth):
+        loc = normalize_loc(loc)
         self._start()
         last = None
         tries = self.max_retries if self.proxy else 1  # بدون پراکسی، IP عوض نمی‌شود و تکرار فایده ندارد

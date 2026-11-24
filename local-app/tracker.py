@@ -76,7 +76,8 @@ class DataForSEO(Provider):
         }
         if "lat" in loc:
             # فرمت: "lat,lng,radius" — واحد radius را با مستندات DataForSEO چک کنید
-            task["location_coordinate"] = f'{loc["lat"]},{loc["lng"]},{loc.get("radius", 200)}'
+            lng = ((float(loc["lng"]) + 180) % 360 + 360) % 360 - 180
+            task["location_coordinate"] = f'{loc["lat"]},{lng:.6f},{loc.get("radius", 200)}'
         else:
             task["location_name"] = loc["name"]
         r = requests.post(self.URL, auth=self.auth, json=[task], timeout=120)
