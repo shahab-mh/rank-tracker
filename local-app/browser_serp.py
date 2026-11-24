@@ -80,11 +80,17 @@ EXTRACT_JS = r"""
     const t = (h.textContent || '').trim();
     for (const [type, re] of Object.entries(headingWords)) if (re.test(t)) feats.push({type, el: h});
   });
-  const skipInside = '.related-question-pair, g-scrolling-carousel, g-section-with-header, [data-initq], #tads, #tadsb, [data-text-ad], .VkpGBb, #local-results';
+  // لینک‌های نتیجه: چند الگو، چون گوگل مدام markup را عوض می‌کند
+  const candSel = 'a[jsname="UWckNb"], a[href]:has(h3), a[href]:has([role="heading"][aria-level="3"])';
+  const cands = [...root.querySelectorAll(candSel)];
+  // باکسی که بیش از ۳ لینک نتیجه را در بر بگیرد، wrapper است نه المان ویژه -> نادیده
+  for (const f of feats) if (f.box && cands.filter(a => f.el.contains(a)).length > 3) f.wrapper = true;
+  const real = feats.filter(f => !f.wrapper), boxes = real.filter(f => f.box);
+  const skipInside = '.related-question-pair, g-scrolling-carousel, [data-initq], #tads, #tadsb, [data-text-ad]';
   const organic = [], seen = new Set();
-  root.querySelectorAll('a[href] h3').forEach(h3 => {
-    const a = h3.closest('a');
-    if (!a || a.closest(skipInside) || feats.some(f => f.box && f.el.contains(a))) return;
+  cands.forEach(a => {
+    if (a.closest(skipInside) || boxes.some(f => f.el.contains(a))) return;
+    const h3 = a.querySelector('h3, [role="heading"]') || a;
     let href = a.href;
     try {
       const u = new URL(href);
@@ -96,10 +102,10 @@ EXTRACT_JS = r"""
     if (!/^https?:/.test(href) || seen.has(href)) return;
     seen.add(href);
     // تعداد المان‌های غیر ارگانیکِ قبل از این نتیجه -> رتبه مطلق
-    const before = new Set(feats.filter(f => f.el.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING).map(f => f.type + '|' + (f.el.closest('[data-hveid]')?.getAttribute('data-hveid') || '')));
-    organic.push({url: href, title: h3.textContent.trim(), featuresBefore: before.size});
+    const before = new Set(real.filter(f => !f.el.contains(a) && (f.el.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING)).map(f => f.type + '|' + (f.el.closest('[data-hveid]')?.getAttribute('data-hveid') || '')));
+    organic.push({url: href, title: (h3.textContent || '').trim().slice(0, 200), featuresBefore: before.size});
   });
-  return {organic, features: [...new Set(feats.map(f => f.type))],
+  return {organic, features: [...new Set(real.map(f => f.type))],
           noResults: !!document.querySelector('#topstuff .card-section, .mnr-c') && organic.length === 0};
 }
 """
@@ -211,7 +217,7 @@ class BrowserSERP:
     def _search_once(self, keyword, loc, lang, country, device, depth):
         ctx = self._context(loc, lang, country, device)
         page = ctx.new_page()
-        results, features, shot, abs_offset = [], [], None, 0
+        results, features, shot, abs_offset, found_urls = [], [], None, 0, []
         try:
             for start in range(0, depth, 10):
                 page.goto(self._url(keyword, loc, lang, country, start), wait_until="domcontentloaded", timeout=45000)
@@ -228,6 +234,12 @@ class BrowserSERP:
                     name = f"{uuid.uuid4().hex}.jpg"
                     page.screenshot(path=os.path.join(self.screenshot_dir, name), full_page=True, type="jpeg", quality=55)
                     shot = name
+                    try:  # HTML صفحه برای عیب‌یابی
+                        with open(os.path.join(self.screenshot_dir, name[:-4] + ".html"), "w", encoding="utf-8") as fh:
+                            fh.write(page.content())
+                    except Exception:  # noqa: BLE001
+                        pass
+                found_urls += [o["url"] for o in data["organic"]]
                 for o in data["organic"][: depth - len(results)]:
                     rank = len(results) + 1
                     absolute = rank + (o["featuresBefore"] if start == 0 else abs_offset)
@@ -241,7 +253,7 @@ class BrowserSERP:
             ctx.close()
         for f in features:
             results.append({"type": f, "organic_rank": None, "absolute_rank": None, "url": ""})
-        return results, {"screenshot": shot, "engine": "browser", "proxy": bool(self.proxy)}
+        return results, {"screenshot": shot, "engine": "browser", "proxy": bool(self.proxy), "organic_urls": found_urls[:depth]}
 
     def search(self, keyword, loc, lang, country, device, depth):
         loc = normalize_loc(loc)

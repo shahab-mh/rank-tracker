@@ -415,11 +415,20 @@ function renderRows() {
     return `<tr onclick="showHistory(${lastRows.indexOf(r)})"><td><b>${esc(r.keyword)}</b></td><td>${esc(r.location)}</td><td>${devName(r.device)}</td>
       <td>${rank}</td><td>${delta}</td><td>${spread}</td><td>${fa(r.absolute)}</td><td>${g}</td>
       <td>${r.url ? `<a class="url" href="${esc(r.url)}" target="_blank" onclick="event.stopPropagation()">${esc(r.url.replace(/^https?:\/\//, ''))}</a>` : ''}</td>
-      <td>${feats}</td><td>${(r.screenshots || []).map((n, k) => `<a href="/shots/${esc(n)}" target="_blank" onclick="event.stopPropagation()">${fa(k + 1)}</a>`).join(' ')}</td></tr>`;
+      <td>${feats}</td><td>${(r.screenshots || []).map((n, k) => `<a href="/shots/${esc(n)}" target="_blank" onclick="event.stopPropagation()">${fa(k + 1)}</a>`).join(' ')}
+        ${r.screenshots?.length ? `<button class="btn sm" onclick="event.stopPropagation();showFound('${esc(r.screenshots[0])}')">نتایج خوانده‌شده</button>` : ''}</td></tr>`;
   }).join('');
 }
 ['f-loc', 'f-dev', 'f-q'].forEach(id => $(id).oninput = renderRows);
 
+async function showFound(shot) {
+  const d = await api('/api/checks/found?shot=' + encodeURIComponent(shot));
+  const w = window.open('', '_blank');
+  w.document.write(`<html dir="ltr"><head><meta charset="utf-8"><title>Found results</title></head><body style="font:14px sans-serif;padding:16px">
+    <p dir="rtl">نتایج ارگانیکی که ابزار از صفحه خوانده (به ترتیب). اگر با اسکرین‌شات فرق دارد، فایل HTML را برای عیب‌یابی بفرستید:
+    <a href="/shots/${shot.replace('.jpg', '.html')}">دانلود HTML</a></p>
+    <ol>${d.urls.map(u => `<li>${u.replace(/</g, '&lt;')}</li>`).join('') || '<li dir="rtl">هیچ نتیجه‌ای خوانده نشد</li>'}</ol></body></html>`);
+}
 async function showHistory(i) {
   const r = lastRows[i];
   const d = await api(`/api/projects/${current.id}/history?` + new URLSearchParams({keyword: r.keyword, location: r.location, device: r.device}));

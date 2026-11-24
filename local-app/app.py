@@ -227,9 +227,20 @@ def index():
 
 @app.get("/shots/<name>")
 def shots(name):
-    if "/" in name or "\\" in name or not name.endswith(".jpg"):
+    if "/" in name or "\\" in name or not (name.endswith(".jpg") or name.endswith(".html")):
         abort(404)
+    if name.endswith(".html"):  # فقط دانلود، اجرا نشود
+        return send_from_directory(SHOTS, name, mimetype="text/plain", as_attachment=True)
     return send_from_directory(SHOTS, name)
+
+
+@app.get("/api/checks/found")
+def api_found():
+    """لیست نتایجی که ابزار در صفحه پیدا کرده (برای مقایسه با اسکرین‌شات)."""
+    with con() as c:
+        r = c.execute("SELECT raw, ranked_url, organic_rank FROM checks WHERE screenshot=?", (request.args["shot"],)).fetchone()
+    raw = json.loads(r["raw"] or "{}") if r else {}
+    return jsonify(urls=raw.get("organic_urls", []), rank=r["organic_rank"] if r else None)
 
 
 @app.get("/api/settings")
