@@ -2,7 +2,7 @@
 
 ابزار بررسی رتبه سایت در گوگل، برای هر پروژه، هر کلمه کلیدی و **هر نقطه جغرافیایی** (مختصات GPS یا نام شهر)، با موبایل و دسکتاپ.
 
-🔗 **نسخه آنلاین:** https://shahab-1997.github.io/rank-tracker/
+🔗 **نسخه آنلاین:** https://shahab-mh.github.io/rank-tracker/
 
 ## ویژگی‌ها
 
@@ -35,7 +35,7 @@
 
 1. در [Google Cloud Console](https://console.cloud.google.com/) پروژه بسازید و **Google Search Console API** را فعال کنید.
 2. در *APIs & Services → OAuth consent screen* صفحه رضایت را بسازید (نوع External).
-3. در *Credentials → Create credentials → OAuth client ID* نوع **Web application** را انتخاب کنید و در *Authorized JavaScript origins* این را اضافه کنید: `https://shahab-1997.github.io`
+3. در *Credentials → Create credentials → OAuth client ID* نوع **Web application** را انتخاب کنید و در *Authorized JavaScript origins* این را اضافه کنید: `https://shahab-mh.github.io`
 4. Client ID ساخته‌شده را در فایل `docs/config.js` قرار دهید.
 
 > تا وقتی برنامه OAuth توسط گوگل verify نشده، فقط کاربرانی که در بخش *Test users* اضافه کرده‌اید می‌توانند وارد شوند. هر کاربر هم می‌تواند Client ID خودش را در تنظیمات سایت وارد کند.
